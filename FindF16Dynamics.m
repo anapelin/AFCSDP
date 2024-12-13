@@ -210,7 +210,7 @@ legend('an [xa = 0 ft]');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Get all the values for xa/gD
-gD = 3.280840;
+gD = 32.1740;
 xa_values_ft = [0, 5, 5.9, 6, 7, 15]; 
 xa_gD_values = xa_values_ft / gD; % gD = 3.280840 ft/s^2
 
@@ -327,24 +327,22 @@ end
 %}
 %}
 % Reinitialise xa/gD to be 0 
-%set_param('LIN_F16Block/Gain', 'Gain', '0');
-%{
+set_param('LIN_F16Block/Gain', 'Gain', '0');
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Calculate the instantaneous center of rotation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp("Finding the instantaneous center of rotation")
 % Set xa range and step size
-xa_start = 0; % Starting value of xa
+xa_start = 5; % Starting value of xa
 xa_end = 8;   % Ending value of xa
 step_size = 0.1; % Increment size for xa
-gD = 3.280840;
+gD = 32.1740;
 % Magnitude threshold for filtering zeros
 %zero_threshold = 1e-12;
 
 % Loop through xa values
 for xa = xa_start:step_size:xa_end
-    disp('xa / gD');
-    xa / gD
     set_param('LIN_F16Block/Gain', 'Gain', num2str(xa / gD));
 
     %% Find trim for lofi model at desired altitude and velocity
@@ -438,5 +436,5 @@ hold on;
 bode(SS_lat_lo(output,input),omega)
 legend('hifi','lofi')
 %}
-%}
+
 
