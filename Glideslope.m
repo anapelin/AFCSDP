@@ -18,6 +18,7 @@ newline = sprintf('\n');
 close all
 
 rng(1,"twister");
+s = tf('s');
 
 %% Trim aircraft to desired altitude and velocity
 %%
@@ -80,8 +81,8 @@ state_names = {
 
 long_indices_states_reduced = [3 7 8 5 11 13 14];
 long_indices_states = [3 7 8 5 11];
-long_indices_input = [1 2]; % throttle and engine
-long_indices_output = [3 7 5 11];
+long_indices_input = [1 2]; % throttle and elev
+long_indices_output = [3 7 8 5 11];
 A_indices_states_ac = [1 2 3 4 5];
 B_indices_states_ac = [6 7];
 
@@ -136,6 +137,52 @@ trim_condition = trim_state_lo(long_indices_states); % h,Vt,α,θ,q
 %% Making the reduced tf with MIMO 2 in 4 out
 model_tf = tf(reducedModel);
 model_tf
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Design the glideslope controller, starting with the AFCS + Airplane block
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Define the inner loop
+Kq = 1;
+tf_elevator_q = model_tf(5,2);
+tf_elevator_q = minreal(tf_elevator_q);
+inner_loop = Kq * H_elevator * tf_elevator_q;
+inner_loop = feedback(inner_loop, 1);
+
+% Define complete Airplane + AFCS block
+Ktheta = 1;
+outer_loop = Ktheta * inner_loop * 1/s;
+outer_loop = feedback(outer_loop,1);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Compute the transfer function from theta to the flight path angle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tf_elevator_alpha = model_tf(3,2);
+tf_elevator_theta = model_tf(4,2);
+tf_theta_gamma = 1 - tf_elevator_alpha / tf_elevator_theta;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Assemble all elements
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Kcoupler = 1;
+W1 = 1000;
+H_receiver = 1;
+H_coupler = Kcoupler * (1 + W1/s);
+H_airplaneAFCS = outer_loop;
+H_thetagamma = tf_theta_gamma;
+
+% Initialize slant range from the distance to the runway and the altitude
+R = sqrt(runway_location * runway_location + height_intercept * height_intercept); % TBD slant range 
+H_glideslopedynamics = tf(velocity/s * pi /180);
+H_range = 1/R;
+
+
+
+
+
 
 
 
