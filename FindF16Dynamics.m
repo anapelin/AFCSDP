@@ -19,8 +19,13 @@ newline = sprintf('\n');
 set_param('LIN_F16Block/Gain', 'Gain', '0');
 %% Trim aircraft to desired altitude and velocity
 %%
-altitude = input('Enter the altitude for the simulation (ft)  :  ');
-velocity = input('Enter the velocity for the simulation (ft/s):  ');
+%altitude = input('Enter the altitude for the simulation (ft)  :  ');
+%velocity = input('Enter the velocity for the simulation (ft/s):  ');
+
+% Set up the altitude and velocity as they are constant for this part
+altitude = 15000; % ft
+velocity = 500; % ft/s
+
 
 FC_flag = 1; % Trim for steady wings-level flight
 
