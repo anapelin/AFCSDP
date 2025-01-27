@@ -1,4 +1,4 @@
-%================================================
+ %================================================
 %     Matlab Script File used to linearize the 
 %     non-linear F-16 model. The program will 
 %     Extract the longitudal and lateral 
@@ -49,7 +49,6 @@ operating_point.Inputs(1).u = trim_thrust_lin; operating_point.Inputs(2).u = tri
 operating_point.Inputs(3).u = trim_control_lin(2); operating_point.Inputs(4).u = trim_control_lin(3);
 
 SS_lo = linearize('LIN_F16Block');
-
 newline = sprintf('\n');
 
 %% System state names
@@ -136,10 +135,10 @@ title('Pole-Zero Map: Full Short-Period Model');
 grid on;
 
 % Plot poles and zeros for the reduced short-period model
-%figure;
-%pzmap(sys_sp_reduced);
-%title('Pole-Zero Map: Reduced Short-Period Model');
-%grid on;
+figure;
+pzmap(sys_sp_reduced);
+title('Pole-Zero Map: Reduced Short-Period Model');
+grid on;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Short Period Plots for q and alpha
@@ -201,17 +200,6 @@ damp_ratio_req = 0.5;
 %states: alpha, q
 %%% Ignore actuator dynamics
 
-%{
-% Define transfer function for the reduced short-period model
-alpha_q_tf = tf(sys_sp_reduced);
-
-% Extract the transfer function from elevator input to alpha and q
-elevator_to_alpha = alpha_q_tf(1, 1); % Output 1 (alpha) from input 1 (elevator)
-elevator_to_q = alpha_q_tf(2, 1);     % Output 2 (q) from input 1 (elevator)
-
-combined_alpha_q_tf = [elevator_to_alpha; elevator_to_q];
-%}
-
 %% Find Kalpha
 tfs_sys_sp_reduced = tf(sys_sp_reduced);
 tfalpha = tfs_sys_sp_reduced(1);
@@ -220,6 +208,7 @@ figure;
 rlocus(-tfalpha)
 xlim([-10 10])
 ylim([-10 10])
+title("Root Locus alpha transfer function");
 
 %% Find Kq
 Kalpha = -7.63;
@@ -241,10 +230,14 @@ CL_tf = feedback(Kq*tfq, 1);
 % Plot the poles and zeros of the closed loop transfer function of q
 figure
 pzmap(CL_tf)
+title('Pole-Zero Map: Closed Loop Tuned Pitch Rate Transfer Function');
+grid on;
 
 % Plot the step response of the closed loop transfer function of q
 figure;
 step(CL_tf)
+title("Step Response: Tuned Pitch Rate Closed Loop");
+grid on;
 xlim([0 10])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
