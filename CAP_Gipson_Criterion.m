@@ -19,6 +19,9 @@ close all
 
 rng(1,"twister");
 
+% Set xa/gD to 0 
+%set_param('LIN_F16Block/Gain', 'Gain', '0');
+
 %% Trim aircraft to desired altitude and velocity
 %%
 altitude = 40000;
@@ -118,7 +121,6 @@ B_sp = B_ac_long([2 4], [1]);
 C_sp = C_ac_long([1 2], [2 4]);
 D_sp = D_ac_long(:, [1]);
 
-
 % Create the state space system for the short period reduced model
 sys_sp_reduced = ss(A_sp, B_sp, C_sp, D_sp);
 % Full longitudinal state-space model (4 states: Vt, alpha, theta, q)
@@ -145,44 +147,64 @@ grid on;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Choose the eigenvector corresponding to the short-period mode
-sp_full_init_cond = real(full_eigvecs(:, 1)); % Short-period eigenvector (real part)
-sp_reduced_init_cond = real(reduced_eigvecs(:, 2));
+%sp_full_init_cond = real(full_eigvecs(:, 1)); % Short-period eigenvector (real part)
+%sp_reduced_init_cond = real(reduced_eigvecs(:, 2));
 
-%sp_init_cond = [0,0,0,0];
+% Make the initial conditions 0 to observe the behaviour of q for reduced
+% and full models
+sp_full_init_cond = [0, 0, 0, 0];
+sp_reduced_init_cond = [0, 0];
 
-% Create the time vector for simulation
-t = 0:0.01:500;
+% Create the time vector for simulation for the long time scenario (500 seconds)
+t_long = 0:0.01:500;
+
+% Create the time vector for simulation for the short time scenario (25 seconds)
+t_short = 0:0.01:30;
 
 % Define input as zero for the short period motion (no external input)
-u = zeros(length(t), 2); % Two input channels for elevator and throttle 
-u(:, 1) = -1; % Negative elevator step input
-u_sp = ones(length(t),1);
-u_sp =-1 * u_sp;
+u_long = zeros(length(t_long), 2); % Two input channels for elevator and throttle 
+u_long(:, 1) = -1; % Negative elevator step input
+u_sp_long = ones(length(t_long), 1);
+u_sp_long = -1 * u_sp_long;
 
-% Simulate the response of the system using lsim
-[y_full_sp, t_out, x_full_sp] = lsim(sys_sp_full, u, t, sp_full_init_cond);
-[y_reduced_sp, t_out, x_reduced_sp] = lsim(sys_sp_reduced, u_sp, t, sp_reduced_init_cond);
+% Define input for the short time scenario
+u_short = zeros(length(t_short), 2); 
+u_short(:, 1) = -1; 
+u_sp_short = ones(length(t_short), 1);
+u_sp_short = -1 * u_sp_short;
 
+% Simulate the response of the system using lsim for the long time scenario
+[y_full_sp_long, t_out_long, x_full_sp_long] = lsim(sys_sp_full, u_long, t_long, sp_full_init_cond);
+[y_reduced_sp_long, t_out_long, x_reduced_sp_long] = lsim(sys_sp_reduced, u_sp_long, t_long, sp_reduced_init_cond);
 
-% Plot q (Pitch Rate) for both cases on the same figure
+% Simulate the response of the system using lsim for the short time scenario
+[y_full_sp_short, t_out_short, x_full_sp_short] = lsim(sys_sp_full, u_short, t_short, sp_full_init_cond);
+[y_reduced_sp_short, t_out_short, x_reduced_sp_short] = lsim(sys_sp_reduced, u_sp_short, t_short, sp_reduced_init_cond);
+
+% Plot q (Pitch Rate) for both full and reduced models for long time scenario (t = 500)
 figure;
-plot(t_out, x_full_sp(:, 4), 'm', 'LineWidth', 1.5); % Full model response
+plot(t_out_long, x_full_sp_long(:, 4), 'm', 'LineWidth', 1.5); % Full model response
 hold on; % Keep the current plot
-plot(t_out, x_reduced_sp(:, 2), 'g', 'LineWidth', 1.5); % Reduced model response
-
-% Add title and axis labels
-title('Short Period Time Response: q (Pitch Rate)');
+plot(t_out_long, x_reduced_sp_long(:, 2), 'g', 'LineWidth', 1.5); % Reduced model response
+title('Long Period Time Response: q (Pitch Rate) up to 500 seconds');
 xlabel('Time (s)');
 ylabel('q (deg/s)');
-
-% Add grid
 grid on;
-
-% Add legend
 legend('Full Model', 'Reduced Model', 'Location', 'Best');
-
-% Release hold
 hold off;
+
+% Plot q (Pitch Rate) for both full and reduced models for short time scenario (t = 25)
+figure;
+plot(t_out_short, x_full_sp_short(:, 4), 'm', 'LineWidth', 1.5); % Full model response
+hold on; % Keep the current plot
+plot(t_out_short, x_reduced_sp_short(:, 2), 'g', 'LineWidth', 1.5); % Reduced model response
+title('Short Period Time Response: q (Pitch Rate) up to 25 seconds');
+xlabel('Time (s)');
+ylabel('q (deg/s)');
+grid on;
+legend('Full Model', 'Reduced Model', 'Location', 'Best');
+hold off;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Calculate the requirements for nf, T_theta_2, damping ratio
@@ -216,7 +238,7 @@ A_sp_w_gain = A_sp - B_sp * C_sp(1,:) * Kalpha;
 sys_sp_reduced_w_Kalpha = ss(A_sp_w_gain, B_sp, C_sp, D_sp);
 tfs_sys_sp_reduced_tuned = tf(sys_sp_reduced_w_Kalpha);
 tfq = tfs_sys_sp_reduced_tuned(2);
-
+    
 figure
 rlocus(-tfq)
 xlim([-4 4])
@@ -226,7 +248,6 @@ ylim([-10 10])
 %% Check for the step response of the closed loop transfer function
 Kq = -2.31;
 CL_tf = feedback(Kq*tfq, 1);
-
 % Plot the poles and zeros of the closed loop transfer function of q
 figure
 pzmap(CL_tf)
@@ -239,6 +260,7 @@ step(CL_tf)
 title("Step Response: Tuned Pitch Rate Closed Loop");
 grid on;
 xlim([0 10])
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Add leadlag filter to tune for t_theta_2 required
@@ -285,10 +307,8 @@ disp(zeta);
 %% Find K_masa such that tuned q_ff convereges to q_input
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 % Define K_masa
-K_masa = 1 / 0.14 / 0.88;
-
+K_masa = 1 / 0.14 / 0.88; % 8.11688311
 % Define the time vector for simulation
 t = 0:0.01:10;
 
@@ -313,11 +333,68 @@ grid on;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Verify the requirements are met for CAP and Gibson based on found natural frequency, t_theta_2 and damping ratio
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-CAP_value = wn * wn/velocity * g * t_theta_2;
-DBqss = t_theta_2 - 2 * zeta/wn;
 
-disp("Requirements: ");
-disp("CAP criterion: ");
-disp(CAP_value);
-disp("Gibson criterion: ");
-disp(DBqss);
+
+% Calculate the design requirements values
+CAP_value_model = wn * wn/velocity * g * t_theta_2;
+DBqss_model = t_theta_2 - 2 * zeta/wn;
+
+% Display the model requirements values
+disp("Requirements Design: ");
+disp("CAP criterion design value: ");
+disp(CAP_value_model);
+disp("Gibson criterion design value: ");
+disp(DBqss_model);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Calculate the dropback based on pitch angle and pitch rate
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Set the maximum simulation time to 3 seconds
+t_max = 8;
+dt = 0.01; % Time step (you can adjust this as needed)
+t = 0:dt:t_max; % Time vector for simulation
+remove_input_idx = 2.5/dt;
+
+% Simulate the system with feedback and feedforward
+
+u_ff = zeros(length(t), 1) * K_masa;  % Feedforward input
+u_ff(1:remove_input_idx) = 1;
+[y_tuned, t_out, x_tuned] = lsim(tfq_tuned, u_ff, t);
+
+
+% Integrate the y_tuned response using the trapezoidal method (cumulative integral)
+y_integral = cumtrapz(t_out, y_tuned);
+
+% Find the last two points for steady-state calculation
+t_steady = t_out(end-1:end); % Last two time points
+y_steady = y_integral(end-1:end); % Corresponding y_tuned values at the last two points
+
+% Find the slope (dy/dt) and intercept for the steady-state line using linear regression
+p = polyfit(t_steady, y_steady, 1); % Linear fit (1st order polynomial)
+slope = p(1); % Slope (dy/dt)
+intercept = p(2); % Intercept
+
+% Use the linear equation to compute the steady-state pitch angle (theta)
+theta_initial = 0; % Assuming initial pitch angle is 0
+theta_steady = theta_initial + slope * (t_out - t_out(1)) + intercept;
+
+% Plot y_tuned and its integral on the same plot
+figure;
+hold on;
+plot(t_out, y_tuned, 'b', 'LineWidth', 1.5); % Pitch rate response (y_tuned)
+plot(t_out, y_integral, 'r--', 'LineWidth', 1.5); % Cumulative integral of y_tuned
+plot(t_out, theta_steady, 'g--', 'LineWidth', 1.5); % Steady-state pitch angle (linear equation)
+title('Pitch Rate, Integral of Pitch Rate, and Linear Steady-State Pitch Angle');
+xlabel('Time (s)');
+ylabel('Pitch Rate (q, deg/s) and Pitch Angle (\theta, deg)');
+legend('Pitch Rate (q)', 'Integral of Pitch Rate', 'Linear Steady-State Pitch Angle');
+
+% Display the formula for the steady-state line on the top-left part of the plot
+formula_text = sprintf('y = %.3fx + %.3f', slope, intercept);
+text(0.05, 0.95, formula_text, 'FontSize', 12, 'Color', 'black', 'Units', 'normalized');
+
+grid on;
+hold off;
+
