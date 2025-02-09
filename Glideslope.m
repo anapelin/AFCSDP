@@ -208,8 +208,8 @@ rlocus(tf_elevator_alpha);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Assemble all elements
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Kcoupler = 1;
-W1 = 1000;
+Kcoupler = 1000;
+W1 = 0.1;
 H_receiver = 1;
 H_coupler = Kcoupler * (1 + W1/s);
 H_airplaneAFCS = outer_loop;
@@ -239,35 +239,13 @@ interceptVelocity = velocity; % ft/s, initial velocity
 % Initialize simulation 
 t = 0:0.01:simulationTime;
 
+trim_condition(3) = trim_condition(3) * 180/pi;
+trim_condition(4) = trim_condition(4) * 180/pi;
+
+latex_A = latex(sym(A_long))
+latex_B = latex(sym(B_long))
+latex_C = latex(sym(C_long))
 
 
 
 
-% Glideslope at each timestamp
-%h_total = h_trimmed + height_intercept;
-%V_total = V_trimmed + V_intercept;
-
-
-
-
-
-% Create initial conditions for Simulink simulation
-%initial_state = trim_state_lo;
-%initial_state(3) = interceptAltitude; % Initial altitude
-%initial_state(7) = interceptVelocity; % Initial velocity
-
-% Set up Simulink input and model
-% Here you would configure your State-Space block or Simulink model
-% pointing to intercept the glide slope with the required flight path angle.
-
-% Additional setup for control inputs
-%u0 = trim_control_lo;  % Control inputs at trimmed state
-
-% Simulink model setup
-%simIn = Simulink.SimulationInput('YourSimulinkModelName');
-%simIn = simIn.setModelParameter('StartTime', '0', 'StopTime', num2str(simulationTime));
-%simIn = simIn.setVariable('initial_state', initial_state);
-%simIn = simIn.setVariable('u0', u0);
-
-% Run the simulation
-%   	simOut = sim(simIn)
